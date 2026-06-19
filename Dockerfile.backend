@@ -5,18 +5,16 @@ WORKDIR /app
 
 # Copy package files
 COPY server/package.json ./
-COPY server/pnpm-lock.yaml ./
 
-# Install dependencies
-RUN npm install -g pnpm
-RUN pnpm install
+# Install dependencies using npm
+RUN npm install
 
 # Copy source
 COPY server/src ./src
 COPY server/tsconfig.json ./
 
 # Build TypeScript
-RUN pnpm build
+RUN npm run build
 
 # Production stage
 FROM node:20-alpine
@@ -27,8 +25,7 @@ WORKDIR /app
 COPY server/package.json ./
 
 # Install production dependencies only
-RUN npm install -g pnpm
-RUN pnpm install --prod
+RUN npm install --omit=dev
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
