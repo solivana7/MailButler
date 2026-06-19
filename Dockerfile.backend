@@ -12,10 +12,11 @@ RUN npm install -g pnpm
 RUN pnpm install
 
 # Copy source
-COPY server ./server
+COPY server/src ./src
+COPY server/tsconfig.json ./
 
-# Build
-RUN cd server && pnpm build
+# Build TypeScript
+RUN pnpm build
 
 # Production stage
 FROM node:20-alpine
@@ -25,12 +26,12 @@ WORKDIR /app
 # Copy package files
 COPY server/package.json ./
 
-# Install production dependencies
+# Install production dependencies only
 RUN npm install -g pnpm
 RUN pnpm install --prod
 
 # Copy built files from builder
-COPY --from=builder /app/server/dist ./dist
+COPY --from=builder /app/dist ./dist
 
 # Set environment
 ENV NODE_ENV=production
