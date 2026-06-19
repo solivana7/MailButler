@@ -1,9 +1,8 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd server && pnpm install && pnpm build",
-    "startCommand": "cd server && pnpm start"
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile.backend"
   },
   "deploy": {
     "numReplicas": 1,
@@ -11,7 +10,7 @@
     "restartPolicyMaxRetries": 10
   },
   "healthCheck": {
-    "path": "/health",
+    "path": "/api/health",
     "intervalSeconds": 30,
     "timeoutSeconds": 10,
     "restartThreshold": 3
