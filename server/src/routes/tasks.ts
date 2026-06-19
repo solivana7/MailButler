@@ -30,9 +30,11 @@ taskRoutes.get('/', (req: Request, res: Response) => {
     if (a.status === 'completed' && b.status !== 'completed') return 1;
     if (b.status === 'completed' && a.status !== 'completed') return -1;
 
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
+    const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    const aPriority = priorityOrder[a.priority] ?? 1;
+    const bPriority = priorityOrder[b.priority] ?? 1;
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
     }
 
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();

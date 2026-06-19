@@ -112,7 +112,7 @@ accountRoutes.post('/:id/sync', async (req: Request, res: Response) => {
     const completedAccount: Account = {
       ...syncingAccount,
       unreadCount: Math.floor(Math.random() * 30),
-      totalEmails: syncingAccount.totalEmails + Math.floor(Math.random() * 50),
+      totalEmails: (syncingAccount.totalEmails || 0) + Math.floor(Math.random() * 50),
     };
     inMemoryStore.accounts.set(account.id, completedAccount);
   }, 2000);

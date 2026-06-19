@@ -172,6 +172,7 @@ emailRoutes.post('/:id/reminder', (req: Request, res: Response) => {
 
   const reminder = {
     id: generateId(),
+    userId: 'demo-user',
     emailId: email.id,
     remindAt,
     type: type || 'follow-up',

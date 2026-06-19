@@ -5,15 +5,19 @@ import * as schema from './schema';
 // Use environment variable or fallback to SQLite for local dev
 const databaseUrl = process.env.DATABASE_URL;
 
+let db: ReturnType<typeof drizzle<typeof schema>> | null = null;
+
 if (databaseUrl) {
   // Production: Neon PostgreSQL
   const sql = neon(databaseUrl);
-  export const db = drizzle(sql, { schema });
+  db = drizzle(sql, { schema });
   console.log('📦 Using Neon PostgreSQL database');
 } else {
   // Local development: In-memory store (for demo)
   console.log('📦 Using in-memory store (set DATABASE_URL for persistence)');
 }
+
+export { db };
 
 // In-memory store for demo (when no DATABASE_URL)
 export const inMemoryStore = {
