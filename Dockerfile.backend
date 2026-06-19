@@ -1,9 +1,9 @@
 # Backend Dockerfile
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+WORKDIR /app/server
 
-# Copy package files
+# Copy package files from server directory
 COPY server/package.json ./
 COPY server/pnpm-lock.yaml* ./
 
@@ -16,10 +16,10 @@ COPY server ./server
 # Build
 RUN pnpm build
 
-# Production
+# Production stage
 FROM node:20-alpine
 
-WORKDIR /app
+WORKDIR /app/server
 
 # Copy package files
 COPY server/package.json ./
@@ -27,8 +27,8 @@ COPY server/package.json ./
 # Install production dependencies only
 RUN npm install -g pnpm && pnpm install --prod --frozen-lockfile
 
-# Copy built files
-COPY --from=builder /app/dist ./dist
+# Copy built files from builder
+COPY --from=builder /app/server/dist ./dist
 
 # Set environment
 ENV NODE_ENV=production
