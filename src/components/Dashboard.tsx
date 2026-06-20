@@ -79,7 +79,7 @@ export const Dashboard: React.FC = () => {
         >
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white">
-              Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, Alex
+              Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}, Natasha
             </h1>
             <p className="text-gray-400 mt-1">
               Here's your email overview for today

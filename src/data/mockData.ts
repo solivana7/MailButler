@@ -5,7 +5,7 @@ export const mockAccounts: Account[] = [
   {
     id: 'acc-1',
     name: 'Work',
-    email: 'alex.chen@techcorp.io',
+    email: 'natasha@techcorp.io',
     provider: 'gmail',
     status: 'connected',
     lastSync: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -16,7 +16,7 @@ export const mockAccounts: Account[] = [
   {
     id: 'acc-2',
     name: 'Personal',
-    email: 'alexchen@gmail.com',
+    email: 'natasha@gmail.com',
     provider: 'gmail',
     status: 'connected',
     lastSync: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
@@ -27,7 +27,7 @@ export const mockAccounts: Account[] = [
   {
     id: 'acc-3',
     name: 'Side Projects',
-    email: 'projects@alexchen.dev',
+    email: 'projects@natasha.dev',
     provider: 'gmail',
     status: 'connected',
     lastSync: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
@@ -38,7 +38,7 @@ export const mockAccounts: Account[] = [
   {
     id: 'acc-4',
     name: 'Freelance',
-    email: 'freelance@alexchen.co',
+    email: 'freelance@natasha.co',
     provider: 'imap',
     server: 'mail.freelance.com',
     port: 993,
@@ -55,8 +55,8 @@ const emailTemplates = [
   {
     from: { name: 'Sarah Mitchell', email: 'sarah.m@techcorp.io' },
     subject: 'Q4 Budget Review - Need Your Input ASAP',
-    preview: 'Hi Alex, we need to finalize the Q4 budget by tomorrow. Can you review the attached spreadsheet and provide your feedback on the proposed allocations?',
-    body: `Hi Alex,
+    preview: 'Hi Natasha, we need to finalize the Q4 budget by tomorrow. Can you review the attached spreadsheet and provide your feedback on the proposed allocations?',
+    body: `Hi Natasha,
 
 I hope this email finds you well. We need to finalize the Q4 budget by tomorrow and I need your input on the proposed allocations.
 
@@ -83,8 +83,8 @@ TechCorp Inc.`,
   {
     from: { name: 'GitHub', email: 'notifications@github.com' },
     subject: '[repo/project-api] Pull request #234: Add user authentication',
-    preview: '@alexchen requested your review on "Add user authentication" in project-api. Please review the changes and approve or request modifications.',
-    body: `[@alexchen](https://github.com/alexchen) requested your review on "Add user authentication" in project-api.
+    preview: '@natashaberness requested your review on "Add user authentication" in project-api. Please review the changes and approve or request modifications.',
+    body: `[@natashaberness](https://github.com/alexchen) requested your review on "Add user authentication" in project-api.
 
 Repository: techcorp/project-api
 Pull Request #234: Add user authentication
@@ -110,8 +110,8 @@ Unsubscribe from this repository's notifications.`,
   {
     from: { name: 'James Rodriguez', email: 'j.rodriguez@client-inc.com' },
     subject: 'Follow-up: Website Redesign Proposal',
-    preview: 'Hi Alex, just wanted to follow up on the proposal I sent last week. Have you had a chance to discuss it with your team?',
-    body: `Hi Alex,
+    preview: 'Hi Natasha, just wanted to follow up on the proposal I sent last week. Have you had a chance to discuss it with your team?',
+    body: `Hi Natasha,
 
 I wanted to follow up on the website redesign proposal I sent last Tuesday. Have you had a chance to review it with your team?
 
@@ -158,8 +158,8 @@ Amazon Web Services`,
   {
     from: { name: 'Emily Watson', email: 'emily.watson@startup.co' },
     subject: 'Coffee next Tuesday?',
-    preview: "Hey Alex! It's been a while since we caught up. Would love to grab coffee next Tuesday afternoon if you're free.",
-    body: `Hey Alex!
+    preview: "Hey Natasha! It's been a while since we caught up. Would love to grab coffee next Tuesday afternoon if you're free.",
+    body: `Hey Natasha!
 
 It's been way too long since we caught up! How have you been? I saw on LinkedIn that you're now leading the platform team at TechCorp - congratulations!
 
@@ -208,8 +208,8 @@ TechCorp Inc.`,
   {
     from: { name: 'Michael Chang', email: 'michael.c@techcorp.io' },
     subject: 'Urgent: Server down in production',
-    preview: 'Alex, we have a critical issue. Production server is not responding. Need you to investigate ASAP. Error logs attached.',
-    body: `Alex,
+    preview: 'Natasha, we have a critical issue. Production server is not responding. Need you to investigate ASAP. Error logs attached.',
+    body: `Natasha,
 
 We have a critical issue. The production server is not responding and we're getting alerts from multiple users.
 
@@ -266,7 +266,7 @@ export const mockEmails: Email[] = emailTemplates.map((template, index) => {
     id: `email-${index + 1}`,
     accountId: ['acc-1', 'acc-2', 'acc-3', 'acc-4'][index % 4],
     from: template.from,
-    to: ['alex.chen@techcorp.io'],
+    to: ['natasha@techcorp.io'],
     subject: template.subject,
     preview: template.preview,
     body: template.body,
@@ -294,7 +294,7 @@ const additionalEmails: Email[] = [
     id: 'email-9',
     accountId: 'acc-1',
     from: { name: 'Lisa Park', email: 'lisa.park@techcorp.io' },
-    to: ['alex.chen@techcorp.io'],
+    to: ['natasha@techcorp.io'],
     subject: 'Team lunch this Friday - RSVP needed',
     preview: 'Hi team! We\'re organizing a team lunch this Friday at 12:30 PM. Please RSVP by Wednesday so we can finalize the reservation.',
     body: 'Hi team!\n\nWe\'re organizing a team lunch this Friday at 12:30 PM at the new Italian place downtown.\n\nPlease RSVP by Wednesday so we can finalize the reservation. Let me know if you have any dietary restrictions.',
@@ -317,7 +317,7 @@ const additionalEmails: Email[] = [
     id: 'email-10',
     accountId: 'acc-2',
     from: { name: 'Amazon', email: 'order-update@amazon.com' },
-    to: ['alexchen@gmail.com'],
+    to: ['natasha@gmail.com'],
     subject: 'Your order has shipped',
     preview: 'Your package is on its way! Track your delivery: AirPods Pro. Expected delivery: Thursday, June 20.',
     body: 'Your package is on its way!\n\nTrack your delivery in the Amazon app or at amazon.com.\n\nItems: AirPods Pro (2nd generation)\nExpected delivery: Thursday, June 20',
@@ -340,7 +340,7 @@ const additionalEmails: Email[] = [
     id: 'email-11',
     accountId: 'acc-3',
     from: { name: 'Stripe', email: 'receipts@stripe.com' },
-    to: ['projects@alexchen.dev'],
+    to: ['projects@natasha.dev'],
     subject: 'Payment received: $450.00',
     preview: 'You received a payment of $450.00 from Design Studio Co. This payment will be added to your Stripe balance.',
     body: 'You received a payment!\n\nAmount: $450.00\nFrom: Design Studio Co\nFor: Website development - Phase 2\nDate: June 18, 2024',
@@ -370,10 +370,10 @@ const additionalEmails: Email[] = [
     id: 'email-12',
     accountId: 'acc-1',
     from: { name: 'David Kim', email: 'david.kim@techcorp.io' },
-    to: ['alex.chen@techcorp.io'],
+    to: ['natasha@techcorp.io'],
     subject: 'Meeting request: Platform architecture review',
-    preview: 'Hi Alex, I\'d like to schedule a 1-hour meeting to discuss the new platform architecture. Are you available next week?',
-    body: 'Hi Alex,\n\nI\'d like to schedule a 1-hour meeting to discuss the new platform architecture. This is part of our quarterly review.\n\nAre you available next week? I\'m free Tuesday or Thursday afternoon.\n\nAgenda:\n1. Current architecture overview\n2. Proposed changes for Q1\n3. Resource requirements\n4. Timeline\n\nPlease let me know your availability.\n\nThanks,\nDavid',
+    preview: 'Hi Natasha, I\'d like to schedule a 1-hour meeting to discuss the new platform architecture. Are you available next week?',
+    body: 'Hi Natasha,\n\nI\'d like to schedule a 1-hour meeting to discuss the new platform architecture. This is part of our quarterly review.\n\nAre you available next week? I\'m free Tuesday or Thursday afternoon.\n\nAgenda:\n1. Current architecture overview\n2. Proposed changes for Q1\n3. Resource requirements\n4. Timeline\n\nPlease let me know your availability.\n\nThanks,\nDavid',
     date: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
     category: 'important',
     isRead: false,
@@ -393,10 +393,10 @@ const additionalEmails: Email[] = [
     id: 'email-13',
     accountId: 'acc-4',
     from: { name: 'New Client', email: 'hello@newclient.com' },
-    to: ['freelance@alexchen.co'],
+    to: ['freelance@natasha.co'],
     subject: 'Inquiry about mobile app development',
     preview: 'Hello, I found your portfolio online. We\'re looking for someone to build a mobile app for our startup. Would you be available for a call?',
-    body: 'Hello Alex,\n\nI found your portfolio online and I\'m impressed by your work. We\'re a new startup looking for someone to build a mobile app.\n\nThe app would be similar to a task management tool with some custom features. We\'re in the early stages and would love to discuss this further.\n\nWould you be available for a call next week?\n\nBest regards,\nJohn Smith\nCEO, NewClient Startup',
+    body: 'Hello Natasha,\n\nI found your portfolio online and I\'m impressed by your work. We\'re a new startup looking for someone to build a mobile app.\n\nThe app would be similar to a task management tool with some custom features. We\'re in the early stages and would love to discuss this further.\n\nWould you be available for a call next week?\n\nBest regards,\nJohn Smith\nCEO, NewClient Startup',
     date: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
     category: 'follow-up',
     isRead: false,
@@ -416,10 +416,10 @@ const additionalEmails: Email[] = [
     id: 'email-14',
     accountId: 'acc-1',
     from: { name: 'HR Department', email: 'hr@techcorp.io' },
-    to: ['alex.chen@techcorp.io'],
+    to: ['natasha@techcorp.io'],
     subject: 'Reminder: Complete your performance review',
     preview: 'This is a reminder to complete your Q2 performance review by June 25. Please log into the HR portal to submit your self-assessment.',
-    body: 'Dear Alex,\n\nThis is a reminder to complete your Q2 performance review by June 25, 2024.\n\nPlease log into the HR portal and submit your self-assessment. Your manager will then review and schedule a 1:1 meeting with you.\n\nSteps:\n1. Log into HR portal\n2. Complete self-assessment form\n3. Set goals for Q3\n\nThank you,\nHR Department',
+    body: 'Dear Natasha,\n\nThis is a reminder to complete your Q2 performance review by June 25, 2024.\n\nPlease log into the HR portal and submit your self-assessment. Your manager will then review and schedule a 1:1 meeting with you.\n\nSteps:\n1. Log into HR portal\n2. Complete self-assessment form\n3. Set goals for Q3\n\nThank you,\nHR Department',
     date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     category: 'important',
     isRead: true,
@@ -447,7 +447,7 @@ const additionalEmails: Email[] = [
     id: 'email-15',
     accountId: 'acc-2',
     from: { name: 'Newsletter', email: 'newsletter@javascriptweekly.com' },
-    to: ['alexchen@gmail.com'],
+    to: ['natasha@gmail.com'],
     subject: 'JavaScript Weekly #623',
     preview: 'This week: React 19 Beta, TypeScript 5.5, and the future of JavaScript runtimes. Plus: 15 trending projects.',
     body: 'JavaScript Weekly #623\n\nWelcome to issue #623!\n\nThis week\'s top stories:\n1. React 19 Beta released\n2. TypeScript 5.5 is out\n3. Deno 2.0 approaching\n\nTrending projects, tutorials, and more inside.',

@@ -1,17 +1,20 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import * as schema from './schema';
 
-// Use environment variable or fallback to SQLite for local dev
+// Use environment variable or fallback to in-memory store for local dev
 const databaseUrl = process.env.DATABASE_URL;
 
-let db: ReturnType<typeof drizzle<typeof schema>> | null = null;
+let db: NodePgDatabase<typeof schema> | null = null;
 
 if (databaseUrl) {
-  // Production: Neon PostgreSQL
-  const sql = neon(databaseUrl);
-  db = drizzle(sql, { schema });
-  console.log('📦 Using Neon PostgreSQL database');
+  // Production: PostgreSQL (works with Railway, Neon, etc.)
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes('railway') ? { rejectUnauthorized: false } : undefined,
+  });
+  db = drizzle(pool, { schema });
+  console.log('📦 Using PostgreSQL database');
 } else {
   // Local development: In-memory store (for demo)
   console.log('📦 Using in-memory store (set DATABASE_URL for persistence)');

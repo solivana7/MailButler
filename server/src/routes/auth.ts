@@ -5,8 +5,8 @@ export const authRoutes = Router();
 // Demo auth - in production, this would use proper OAuth2
 const DEMO_USER = {
   id: 'demo-user',
-  email: 'alex@demo.com',
-  name: 'Alex Chen',
+  email: 'natasha@demo.com',
+  name: 'Natasha',
 };
 
 // Get current user (demo)
