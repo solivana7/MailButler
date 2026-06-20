@@ -1,27 +1,28 @@
-# Frontend Dockerfile
+# Frontend Dockerfile - standalone build for docker-compose/local use
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Enable corepack for pnpm
+RUN corepack enable
+
 # Copy package files
-COPY package.json pnpm-lock.yaml* ./
-COPY server/package.json ./server/
+COPY package.json pnpm-lock.yaml .npmrc ./
 
 # Install dependencies
-RUN npm install -g pnpm && \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Copy source
 COPY . .
 
 # Build frontend
-RUN cd mailmind && pnpm build
+RUN pnpm exec tsc -b && pnpm exec vite build
 
 # Production
 FROM nginx:alpine
 
 # Copy built files
-COPY --from=builder /app/mailmind/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -1,7 +1,7 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, integer, boolean, real } from 'drizzle-orm/pg-core';
 
 // Email Accounts
-export const accounts = sqliteTable('accounts', {
+export const accounts = pgTable('accounts', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   name: text('name').notNull(),
@@ -16,13 +16,13 @@ export const accounts = sqliteTable('accounts', {
   lastSyncAt: text('last_sync_at'),
   unreadCount: integer('unread_count').default(0),
   totalEmails: integer('total_emails').default(0),
-  isEnabled: integer('is_enabled', { mode: 'boolean' }).default(true),
+  isEnabled: boolean('is_enabled').default(true),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
 
 // Emails (cached)
-export const emails = sqliteTable('emails', {
+export const emails = pgTable('emails', {
   id: text('id').primaryKey(),
   accountId: text('account_id').notNull().references(() => accounts.id),
   messageId: text('message_id').notNull(),
@@ -34,9 +34,9 @@ export const emails = sqliteTable('emails', {
   body: text('body'),
   bodyHtml: text('body_html'),
   date: text('date').notNull(),
-  isRead: integer('is_read', { mode: 'boolean' }).default(false),
-  isStarred: integer('is_starred', { mode: 'boolean' }).default(false),
-  hasAttachment: integer('has_attachment', { mode: 'boolean' }).default(false),
+  isRead: boolean('is_read').default(false),
+  isStarred: boolean('is_starred').default(false),
+  hasAttachment: boolean('has_attachment').default(false),
   category: text('category'), // 'urgent' | 'important' | 'follow-up' | 'task' | 'newsletter' | 'archive'
   aiPriority: real('ai_priority'), // 1-10
   aiSentiment: text('ai_sentiment'), // 'positive' | 'neutral' | 'negative'
@@ -49,7 +49,7 @@ export const emails = sqliteTable('emails', {
 });
 
 // Tasks
-export const tasks = sqliteTable('tasks', {
+export const tasks = pgTable('tasks', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   emailId: text('email_id').references(() => emails.id),
@@ -64,19 +64,19 @@ export const tasks = sqliteTable('tasks', {
 });
 
 // Reminders
-export const reminders = sqliteTable('reminders', {
+export const reminders = pgTable('reminders', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   emailId: text('email_id').notNull().references(() => emails.id),
   remindAt: text('remind_at').notNull(),
   type: text('type').notNull(), // 'reply' | 'action' | 'follow-up'
-  isActive: integer('is_active', { mode: 'boolean' }).default(true),
-  isDismissed: integer('is_dismissed', { mode: 'boolean' }).default(false),
+  isActive: boolean('is_active').default(true),
+  isDismissed: boolean('is_dismissed').default(false),
   createdAt: text('created_at').notNull(),
 });
 
 // Weekly Digests
-export const digests = sqliteTable('digests', {
+export const digests = pgTable('digests', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
   weekStart: text('week_start').notNull(),

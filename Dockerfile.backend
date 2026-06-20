@@ -1,33 +1,44 @@
 # Backend Dockerfile - Multi-stage build
+# Builds both the backend API and the frontend SPA, then serves the SPA from the backend.
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY server/package.json ./
+# Enable corepack for pnpm
+RUN corepack enable
 
-# Install ALL dependencies (including dev) for build
-RUN npm install
+# Copy root (frontend) package files
+COPY package.json pnpm-lock.yaml .npmrc ./
 
-# Copy source and config
-COPY server/src ./src
-COPY server/tsconfig.json ./
+# Copy server (backend) package files
+COPY server/package.json server/pnpm-lock.yaml server/.npmrc ./server/
 
-# Build TypeScript
-RUN npm run build
+# Install dependencies using frozen lockfiles
+RUN pnpm install --frozen-lockfile
+RUN cd server && pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Build the frontend SPA
+RUN pnpm exec tsc -b && pnpm exec vite build
+
+# Build the backend API
+RUN cd server && pnpm run build
 
 # Production stage - only production dependencies
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY server/package.json ./
+RUN corepack enable
 
-# Install production dependencies only
-RUN npm install --omit=dev
+# Copy server package files and install production dependencies only
+COPY server/package.json server/pnpm-lock.yaml server/.npmrc ./server/
+RUN cd server && pnpm install --prod --frozen-lockfile
 
-# Copy built files from builder
+# Copy built backend and frontend
+COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/dist ./dist
 
 # Set environment
@@ -36,4 +47,4 @@ ENV PORT=3001
 
 EXPOSE 3001
 
-CMD ["node", "dist/index.js"]
+CMD ["node", "server/dist/index.js"]

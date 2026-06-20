@@ -4,9 +4,32 @@ import type { Account } from '../db/schema.js';
 
 export const accountRoutes = Router();
 
+function toFrontendAccount(account: Account) {
+  let status: 'connected' | 'syncing' | 'error' | 'disabled' = 'connected';
+  if (!account.isEnabled) {
+    status = 'disabled';
+  } else if (!account.lastSyncAt) {
+    status = 'syncing';
+  }
+
+  return {
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    provider: account.provider,
+    server: account.imapServer || undefined,
+    port: account.imapPort || undefined,
+    status,
+    lastSync: account.lastSyncAt || undefined,
+    unreadCount: account.unreadCount,
+    totalEmails: account.totalEmails,
+    isEnabled: account.isEnabled,
+  };
+}
+
 // Get all accounts
 accountRoutes.get('/', (_req: Request, res: Response) => {
-  const accounts = Array.from(inMemoryStore.accounts.values());
+  const accounts = Array.from(inMemoryStore.accounts.values()).map(toFrontendAccount);
   res.json(accounts);
 });
 
@@ -18,7 +41,7 @@ accountRoutes.get('/:id', (req: Request, res: Response) => {
     return res.status(404).json({ error: 'Account not found' });
   }
 
-  res.json(account);
+  res.json(toFrontendAccount(account));
 });
 
 // Add account (IMAP or Gmail)
@@ -50,7 +73,7 @@ accountRoutes.post('/', async (req: Request, res: Response) => {
   };
 
   inMemoryStore.accounts.set(account.id, account);
-  res.status(201).json(account);
+  res.status(201).json(toFrontendAccount(account));
 });
 
 // Update account
@@ -69,7 +92,7 @@ accountRoutes.patch('/:id', (req: Request, res: Response) => {
   };
 
   inMemoryStore.accounts.set(account.id, updatedAccount);
-  res.json(updatedAccount);
+  res.json(toFrontendAccount(updatedAccount));
 });
 
 // Toggle account enabled/disabled
@@ -87,7 +110,7 @@ accountRoutes.patch('/:id/toggle', (req: Request, res: Response) => {
   };
 
   inMemoryStore.accounts.set(account.id, updatedAccount);
-  res.json(updatedAccount);
+  res.json(toFrontendAccount(updatedAccount));
 });
 
 // Sync account (trigger email fetch)

@@ -5,6 +5,45 @@ import type { Email } from '../db/schema.js';
 
 export const emailRoutes = Router();
 
+function parseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function toFrontendEmail(email: Email) {
+  return {
+    id: email.id,
+    accountId: email.accountId,
+    from: {
+      name: email.fromName,
+      email: email.fromEmail,
+    },
+    to: parseJson<string[]>(email.to, []),
+    subject: email.subject,
+    preview: email.preview,
+    body: email.body || '',
+    date: email.date,
+    category: email.category,
+    isRead: email.isRead,
+    hasAttachment: email.hasAttachment,
+    isStarred: email.isStarred,
+    aiAnalysis: email.aiPriority !== null && email.aiPriority !== undefined
+      ? {
+          priority: email.aiPriority,
+          sentiment: email.aiSentiment || 'neutral',
+          urgency: email.aiUrgency || 'medium',
+          actionItems: parseJson<string[]>(email.aiActionItems, []),
+          replyExpectation: email.replyExpectation || 'optional',
+          summary: email.aiSummary || '',
+        }
+      : undefined,
+  };
+}
+
 // Get all emails (with filtering)
 emailRoutes.get('/', (req: Request, res: Response) => {
   const { accountId, category, search, limit = '50', offset = '0' } = req.query;
@@ -42,7 +81,7 @@ emailRoutes.get('/', (req: Request, res: Response) => {
   emails = emails.slice(offsetNum, offsetNum + limitNum);
 
   res.json({
-    emails,
+    emails: emails.map(toFrontendEmail),
     pagination: {
       total,
       limit: limitNum,
@@ -60,7 +99,7 @@ emailRoutes.get('/:id', (req: Request, res: Response) => {
     return res.status(404).json({ error: 'Email not found' });
   }
 
-  res.json(email);
+  res.json(toFrontendEmail(email));
 });
 
 // Analyze email with AI
@@ -94,7 +133,7 @@ emailRoutes.post('/:id/analyze', async (req: Request, res: Response) => {
 
     inMemoryStore.emails.set(email.id, updatedEmail);
 
-    res.json({ email: updatedEmail, analysis });
+    res.json({ email: toFrontendEmail(updatedEmail), analysis });
   } catch (error) {
     console.error('Analysis error:', error);
     res.status(500).json({ error: 'Analysis failed' });
@@ -122,7 +161,7 @@ emailRoutes.patch('/:id/category', (req: Request, res: Response) => {
   };
 
   inMemoryStore.emails.set(email.id, updatedEmail);
-  res.json(updatedEmail);
+  res.json(toFrontendEmail(updatedEmail));
 });
 
 // Toggle read status
@@ -140,7 +179,7 @@ emailRoutes.patch('/:id/read', (req: Request, res: Response) => {
   };
 
   inMemoryStore.emails.set(email.id, updatedEmail);
-  res.json(updatedEmail);
+  res.json(toFrontendEmail(updatedEmail));
 });
 
 // Toggle star
@@ -158,7 +197,7 @@ emailRoutes.patch('/:id/star', (req: Request, res: Response) => {
   };
 
   inMemoryStore.emails.set(email.id, updatedEmail);
-  res.json(updatedEmail);
+  res.json(toFrontendEmail(updatedEmail));
 });
 
 // Add reminder to email

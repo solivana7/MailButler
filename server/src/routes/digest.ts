@@ -5,6 +5,24 @@ import type { Digest } from '../db/schema.js';
 
 export const digestRoutes = Router();
 
+function parseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function serializeDigest(digest: Digest) {
+  return {
+    ...digest,
+    followUps: parseJson(digest.followUps, []),
+    topSenders: parseJson(digest.topSenders, []),
+    insights: parseJson(digest.insights, []),
+  };
+}
+
 // Get weekly digest (generates or returns existing)
 digestRoutes.get('/weekly', async (_req: Request, res: Response) => {
   const userId = 'demo-user';
@@ -25,7 +43,7 @@ digestRoutes.get('/weekly', async (_req: Request, res: Response) => {
   });
 
   if (existingDigest) {
-    return res.json(existingDigest);
+    return res.json(serializeDigest(existingDigest));
   }
 
   // Generate new digest
@@ -86,7 +104,7 @@ digestRoutes.get('/weekly', async (_req: Request, res: Response) => {
   };
 
   inMemoryStore.digests.set(digest.id, digest);
-  res.json(digest);
+  res.json(serializeDigest(digest));
 });
 
 // Get digest history
@@ -94,18 +112,11 @@ digestRoutes.get('/history', (req: Request, res: Response) => {
   const { limit = '12' } = req.query;
   const limitNum = parseInt(limit as string);
 
-  let digests = Array.from(inMemoryStore.digests.values())
+  const digests = Array.from(inMemoryStore.digests.values())
     .filter(d => d.userId === 'demo-user')
     .sort((a, b) => new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime())
-    .slice(0, limitNum);
-
-  // Parse JSON fields
-  digests = digests.map(d => ({
-    ...d,
-    followUps: JSON.parse(d.followUps as string || '[]'),
-    topSenders: JSON.parse(d.topSenders as string || '[]'),
-    insights: JSON.parse(d.insights as string || '[]'),
-  }));
+    .slice(0, limitNum)
+    .map(serializeDigest);
 
   res.json(digests);
 });
@@ -118,12 +129,7 @@ digestRoutes.get('/:id', (req: Request, res: Response) => {
     return res.status(404).json({ error: 'Digest not found' });
   }
 
-  res.json({
-    ...digest,
-    followUps: JSON.parse(digest.followUps as string || '[]'),
-    topSenders: JSON.parse(digest.topSenders as string || '[]'),
-    insights: JSON.parse(digest.insights as string || '[]'),
-  });
+  res.json(serializeDigest(digest));
 });
 
 // Generate custom date range digest
@@ -167,5 +173,5 @@ digestRoutes.post('/custom', async (req: Request, res: Response) => {
     createdAt: new Date().toISOString(),
   };
 
-  res.json(digest);
+  res.json(serializeDigest(digest as Digest));
 });

@@ -1,21 +1,7 @@
 version: '3.8'
 
 services:
-  # Frontend
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    ports:
-      - "5173:80"
-    environment:
-      - VITE_API_URL=http://localhost:3001
-    depends_on:
-      - backend
-    networks:
-      - mailmind
-
-  # Backend API
+  # Backend API (also serves the built frontend SPA at /)
   backend:
     build:
       context: .
@@ -25,29 +11,9 @@ services:
     environment:
       - PORT=3001
       - NODE_ENV=production
-      - FRONTEND_URL=http://localhost:5173
+      - FRONTEND_URL=http://localhost:3001
       - DATABASE_URL=${DATABASE_URL:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - KIMI_API_KEY=${KIMI_API_KEY:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-    depends_on:
-      - redis
-    networks:
-      - mailmind
-
-  # Redis (for caching)
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - mailmind
-
-networks:
-  mailmind:
-    driver: bridge
-
-volumes:
-  redis_data:
