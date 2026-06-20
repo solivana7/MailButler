@@ -49,6 +49,7 @@ interface AppState {
   dismissReminder: (emailId: string) => void;
 
   // Account Actions
+  addAccount: (account: Partial<Account> & Record<string, unknown>) => Promise<void>;
   fetchAccounts: () => Promise<void>;
   toggleAccount: (id: string) => Promise<void>;
   syncAccount: (id: string) => Promise<void>;
@@ -277,6 +278,16 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   // Account Actions
+  addAccount: async (account) => {
+    const res = await fetch(`${API_BASE}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(account),
+    });
+    const newAccount = await res.json();
+    set((state) => ({ accounts: [...state.accounts, newAccount] }));
+  },
+
   fetchAccounts: async () => {
     const res = await fetch(`${API_BASE}/accounts`);
     const accounts = await res.json();

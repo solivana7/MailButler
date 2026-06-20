@@ -24,6 +24,7 @@ export const accounts = pgTable('accounts', {
 // Emails (cached)
 export const emails = pgTable('emails', {
   id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
   accountId: text('account_id').notNull().references(() => accounts.id),
   messageId: text('message_id').notNull(),
   fromName: text('from_name').notNull(),
@@ -95,10 +96,12 @@ export const digests = pgTable('digests', {
 
 // Types
 export type Account = typeof accounts.$inferSelect;
-export type NewAccount = typeof accounts.$inferInsert;
+export type NewAccount = Omit<Account, 'id'> & { id: string };
 export type Email = typeof emails.$inferSelect;
-export type NewEmail = typeof emails.$inferInsert;
+export type NewEmail = Omit<Email, 'id'> & { id: string };
 export type Task = typeof tasks.$inferSelect;
-export type NewTask = typeof tasks.$inferInsert;
+export type NewTask = Omit<Task, 'id'> & { id: string };
 export type Reminder = typeof reminders.$inferSelect;
+export type NewReminder = Omit<Reminder, 'id'> & { id: string };
 export type Digest = typeof digests.$inferSelect;
+export type NewDigest = Omit<Digest, 'id'> & { id: string };

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { inMemoryStore, generateId } from '../db/index.js';
+import { emailRepo, taskRepo, digestRepo } from '../db/repository.js';
 import { generateDigestInsights } from '../services/ai.js';
 import type { Digest } from '../db/schema.js';
 
@@ -25,7 +25,6 @@ function serializeDigest(digest: Digest) {
 
 // Get weekly digest (generates or returns existing)
 digestRoutes.get('/weekly', async (_req: Request, res: Response) => {
-  const userId = 'demo-user';
   const now = new Date();
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - now.getDay());
@@ -35,39 +34,35 @@ digestRoutes.get('/weekly', async (_req: Request, res: Response) => {
   weekEnd.setDate(weekStart.getDate() + 6);
   weekEnd.setHours(23, 59, 59, 999);
 
-  // Check if digest already exists for this week
-  const existingDigest = Array.from(inMemoryStore.digests.values()).find(d => {
-    const dStart = new Date(d.weekStart);
-    return d.userId === userId &&
-      dStart.getTime() === weekStart.getTime();
-  });
+  const weekStartIso = weekStart.toISOString();
 
+  // Check if digest already exists for this week
+  const existingDigest = await digestRepo.findByWeekStart(weekStartIso);
   if (existingDigest) {
     return res.json(serializeDigest(existingDigest));
   }
 
   // Generate new digest
-  const emails = Array.from(inMemoryStore.emails.values()).filter(e => {
+  const emails = (await emailRepo.findAll({ limit: 10000 })).emails.filter((e) => {
     const emailDate = new Date(e.date);
     return emailDate >= weekStart && emailDate <= weekEnd;
   });
 
-  const tasks = Array.from(inMemoryStore.tasks.values()).filter(t => {
+  const allTasks = await taskRepo.findAll();
+  const tasks = allTasks.filter((t) => {
     const taskDate = new Date(t.createdAt);
     return taskDate >= weekStart && taskDate <= weekEnd;
   });
-
-  const allTasks = Array.from(inMemoryStore.tasks.values());
-  const pendingTasks = allTasks.filter(t => t.status !== 'completed');
+  const pendingTasks = allTasks.filter((t) => t.status !== 'completed');
 
   // Calculate urgent replies
-  const urgentReplies = emails.filter(e =>
-    e.aiUrgency === 'critical' || e.aiUrgency === 'high'
+  const urgentReplies = emails.filter(
+    (e) => e.aiUrgency === 'critical' || e.aiUrgency === 'high'
   ).length;
 
   // Top senders
   const senderCounts: Record<string, { name: string; count: number }> = {};
-  emails.forEach(e => {
+  emails.forEach((e) => {
     if (!senderCounts[e.fromEmail]) {
       senderCounts[e.fromEmail] = { name: e.fromName, count: 0 };
     }
@@ -82,48 +77,41 @@ digestRoutes.get('/weekly', async (_req: Request, res: Response) => {
   // Generate AI insights
   const insights = await generateDigestInsights(
     emails.length,
-    { created: tasks.length, completed: tasks.filter(t => t.status === 'completed').length },
+    { created: tasks.length, completed: tasks.filter((t) => t.status === 'completed').length },
     topSenders
   );
 
-  const digest: Digest = {
-    id: generateId(),
-    userId,
-    weekStart: weekStart.toISOString(),
+  const digest = await digestRepo.create({
+    id: `digest-${Date.now()}`,
+    userId: 'demo-user',
+    weekStart: weekStartIso,
     weekEnd: weekEnd.toISOString(),
     totalEmails: emails.length,
-    analyzedEmails: emails.filter(e => e.aiPriority !== null).length,
+    analyzedEmails: emails.filter((e) => e.aiPriority !== null).length,
     urgentReplies,
     tasksCreated: tasks.length,
-    tasksCompleted: tasks.filter(t => t.status === 'completed').length,
+    tasksCompleted: tasks.filter((t) => t.status === 'completed').length,
     pendingTasks: pendingTasks.length,
     followUps: JSON.stringify([]),
     topSenders: JSON.stringify(topSenders),
     insights: JSON.stringify(insights),
     createdAt: new Date().toISOString(),
-  };
+  });
 
-  inMemoryStore.digests.set(digest.id, digest);
   res.json(serializeDigest(digest));
 });
 
 // Get digest history
-digestRoutes.get('/history', (req: Request, res: Response) => {
+digestRoutes.get('/history', async (req: Request, res: Response) => {
   const { limit = '12' } = req.query;
   const limitNum = parseInt(limit as string);
-
-  const digests = Array.from(inMemoryStore.digests.values())
-    .filter(d => d.userId === 'demo-user')
-    .sort((a, b) => new Date(b.weekStart).getTime() - new Date(a.weekStart).getTime())
-    .slice(0, limitNum)
-    .map(serializeDigest);
-
-  res.json(digests);
+  const digests = await digestRepo.findAll(limitNum);
+  res.json(digests.map(serializeDigest));
 });
 
 // Get single digest
-digestRoutes.get('/:id', (req: Request, res: Response) => {
-  const digest = inMemoryStore.digests.get(req.params.id);
+digestRoutes.get('/:id', async (req: Request, res: Response) => {
+  const digest = await digestRepo.findById(req.params.id);
 
   if (!digest) {
     return res.status(404).json({ error: 'Digest not found' });
@@ -143,29 +131,26 @@ digestRoutes.post('/custom', async (req: Request, res: Response) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
 
-  const emails = Array.from(inMemoryStore.emails.values()).filter(e => {
+  const emails = (await emailRepo.findAll({ limit: 10000 })).emails.filter((e) => {
     const emailDate = new Date(e.date);
     return emailDate >= start && emailDate <= end;
   });
 
-  const tasks = Array.from(inMemoryStore.tasks.values()).filter(t => {
+  const tasks = (await taskRepo.findAll()).filter((t) => {
     const taskDate = new Date(t.createdAt);
     return taskDate >= start && taskDate <= end;
   });
 
-  // Similar calculations as weekly digest...
-  const digest = {
-    id: generateId(),
+  const digest: Digest = {
+    id: `digest-${Date.now()}`,
     userId: 'demo-user',
     weekStart: start.toISOString(),
     weekEnd: end.toISOString(),
     totalEmails: emails.length,
-    analyzedEmails: emails.filter(e => e.aiPriority !== null).length,
-    urgentReplies: emails.filter(e =>
-      e.aiUrgency === 'critical' || e.aiUrgency === 'high'
-    ).length,
+    analyzedEmails: emails.filter((e) => e.aiPriority !== null).length,
+    urgentReplies: emails.filter((e) => e.aiUrgency === 'critical' || e.aiUrgency === 'high').length,
     tasksCreated: tasks.length,
-    tasksCompleted: tasks.filter(t => t.status === 'completed').length,
+    tasksCompleted: tasks.filter((t) => t.status === 'completed').length,
     pendingTasks: 0,
     followUps: '[]',
     topSenders: '[]',
@@ -173,5 +158,5 @@ digestRoutes.post('/custom', async (req: Request, res: Response) => {
     createdAt: new Date().toISOString(),
   };
 
-  res.json(serializeDigest(digest as Digest));
+  res.json(serializeDigest(digest));
 });

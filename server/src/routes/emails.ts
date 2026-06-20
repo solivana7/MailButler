@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { inMemoryStore, generateId } from '../db/index.js';
+import { emailRepo, reminderRepo } from '../db/repository.js';
 import { analyzeEmail } from '../services/ai.js';
 import type { Email } from '../db/schema.js';
 
@@ -31,69 +31,46 @@ function toFrontendEmail(email: Email) {
     isRead: email.isRead,
     hasAttachment: email.hasAttachment,
     isStarred: email.isStarred,
-    aiAnalysis: email.aiPriority !== null && email.aiPriority !== undefined
-      ? {
-          priority: email.aiPriority,
-          sentiment: email.aiSentiment || 'neutral',
-          urgency: email.aiUrgency || 'medium',
-          actionItems: parseJson<string[]>(email.aiActionItems, []),
-          replyExpectation: email.replyExpectation || 'optional',
-          summary: email.aiSummary || '',
-        }
-      : undefined,
+    aiAnalysis:
+      email.aiPriority !== null && email.aiPriority !== undefined
+        ? {
+            priority: email.aiPriority,
+            sentiment: email.aiSentiment || 'neutral',
+            urgency: email.aiUrgency || 'medium',
+            actionItems: parseJson<string[]>(email.aiActionItems, []),
+            replyExpectation: email.replyExpectation || 'optional',
+            summary: email.aiSummary || '',
+          }
+        : undefined,
   };
 }
 
 // Get all emails (with filtering)
-emailRoutes.get('/', (req: Request, res: Response) => {
+emailRoutes.get('/', async (req: Request, res: Response) => {
   const { accountId, category, search, limit = '50', offset = '0' } = req.query;
 
-  let emails = Array.from(inMemoryStore.emails.values());
-
-  // Filter by account
-  if (accountId) {
-    emails = emails.filter(e => e.accountId === accountId);
-  }
-
-  // Filter by category
-  if (category && category !== 'all') {
-    emails = emails.filter(e => e.category === category);
-  }
-
-  // Search
-  if (search) {
-    const query = (search as string).toLowerCase();
-    emails = emails.filter(e =>
-      e.subject.toLowerCase().includes(query) ||
-      e.fromName.toLowerCase().includes(query) ||
-      e.fromEmail.toLowerCase().includes(query) ||
-      e.preview.toLowerCase().includes(query)
-    );
-  }
-
-  // Sort by date (newest first)
-  emails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  // Pagination
-  const total = emails.length;
-  const limitNum = parseInt(limit as string);
-  const offsetNum = parseInt(offset as string);
-  emails = emails.slice(offsetNum, offsetNum + limitNum);
+  const { emails, total } = await emailRepo.findAll({
+    accountId: accountId as string | undefined,
+    category: category as string | undefined,
+    search: search as string | undefined,
+    limit: parseInt(limit as string),
+    offset: parseInt(offset as string),
+  });
 
   res.json({
     emails: emails.map(toFrontendEmail),
     pagination: {
       total,
-      limit: limitNum,
-      offset: offsetNum,
-      hasMore: offsetNum + limitNum < total,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+      hasMore: parseInt(offset as string) + parseInt(limit as string) < total,
     },
   });
 });
 
 // Get single email
-emailRoutes.get('/:id', (req: Request, res: Response) => {
-  const email = inMemoryStore.emails.get(req.params.id);
+emailRoutes.get('/:id', async (req: Request, res: Response) => {
+  const email = await emailRepo.findById(req.params.id);
 
   if (!email) {
     return res.status(404).json({ error: 'Email not found' });
@@ -104,7 +81,7 @@ emailRoutes.get('/:id', (req: Request, res: Response) => {
 
 // Analyze email with AI
 emailRoutes.post('/:id/analyze', async (req: Request, res: Response) => {
-  const email = inMemoryStore.emails.get(req.params.id);
+  const email = await emailRepo.findById(req.params.id);
 
   if (!email) {
     return res.status(404).json({ error: 'Email not found' });
@@ -118,9 +95,7 @@ emailRoutes.post('/:id/analyze', async (req: Request, res: Response) => {
       email.fromEmail
     );
 
-    // Update email with analysis
-    const updatedEmail: Email = {
-      ...email,
+    const updatedEmail = await emailRepo.update(email.id, {
       category: analysis.category,
       aiPriority: analysis.priority,
       aiSentiment: analysis.sentiment,
@@ -128,10 +103,11 @@ emailRoutes.post('/:id/analyze', async (req: Request, res: Response) => {
       aiSummary: analysis.summary,
       aiActionItems: JSON.stringify(analysis.actionItems),
       replyExpectation: analysis.replyExpectation,
-      updatedAt: new Date().toISOString(),
-    };
+    });
 
-    inMemoryStore.emails.set(email.id, updatedEmail);
+    if (!updatedEmail) {
+      return res.status(500).json({ error: 'Failed to update email' });
+    }
 
     res.json({ email: toFrontendEmail(updatedEmail), analysis });
   } catch (error) {
@@ -141,9 +117,9 @@ emailRoutes.post('/:id/analyze', async (req: Request, res: Response) => {
 });
 
 // Set email category
-emailRoutes.patch('/:id/category', (req: Request, res: Response) => {
+emailRoutes.patch('/:id/category', async (req: Request, res: Response) => {
   const { category } = req.body;
-  const email = inMemoryStore.emails.get(req.params.id);
+  const email = await emailRepo.findById(req.params.id);
 
   if (!email) {
     return res.status(404).json({ error: 'Email not found' });
@@ -154,63 +130,57 @@ emailRoutes.patch('/:id/category', (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid category' });
   }
 
-  const updatedEmail: Email = {
-    ...email,
-    category,
-    updatedAt: new Date().toISOString(),
-  };
+  const updatedEmail = await emailRepo.update(req.params.id, { category });
+  if (!updatedEmail) {
+    return res.status(404).json({ error: 'Email not found' });
+  }
 
-  inMemoryStore.emails.set(email.id, updatedEmail);
   res.json(toFrontendEmail(updatedEmail));
 });
 
 // Toggle read status
-emailRoutes.patch('/:id/read', (req: Request, res: Response) => {
-  const email = inMemoryStore.emails.get(req.params.id);
+emailRoutes.patch('/:id/read', async (req: Request, res: Response) => {
+  const email = await emailRepo.findById(req.params.id);
 
   if (!email) {
     return res.status(404).json({ error: 'Email not found' });
   }
 
-  const updatedEmail: Email = {
-    ...email,
-    isRead: !email.isRead,
-    updatedAt: new Date().toISOString(),
-  };
+  const updatedEmail = await emailRepo.update(req.params.id, { isRead: !email.isRead });
+  if (!updatedEmail) {
+    return res.status(404).json({ error: 'Email not found' });
+  }
 
-  inMemoryStore.emails.set(email.id, updatedEmail);
   res.json(toFrontendEmail(updatedEmail));
 });
 
 // Toggle star
-emailRoutes.patch('/:id/star', (req: Request, res: Response) => {
-  const email = inMemoryStore.emails.get(req.params.id);
+emailRoutes.patch('/:id/star', async (req: Request, res: Response) => {
+  const email = await emailRepo.findById(req.params.id);
 
   if (!email) {
     return res.status(404).json({ error: 'Email not found' });
   }
 
-  const updatedEmail: Email = {
-    ...email,
-    isStarred: !email.isStarred,
-    updatedAt: new Date().toISOString(),
-  };
+  const updatedEmail = await emailRepo.update(req.params.id, { isStarred: !email.isStarred });
+  if (!updatedEmail) {
+    return res.status(404).json({ error: 'Email not found' });
+  }
 
-  inMemoryStore.emails.set(email.id, updatedEmail);
   res.json(toFrontendEmail(updatedEmail));
 });
 
 // Add reminder to email
-emailRoutes.post('/:id/reminder', (req: Request, res: Response) => {
+emailRoutes.post('/:id/reminder', async (req: Request, res: Response) => {
   const { remindAt, type } = req.body;
-  const email = inMemoryStore.emails.get(req.params.id);
+  const email = await emailRepo.findById(req.params.id);
 
   if (!email) {
     return res.status(404).json({ error: 'Email not found' });
   }
 
-  const reminder = {
-    id: generateId(),
+  const reminder = await reminderRepo.create({
+    id: `reminder-${Date.now()}`,
     userId: 'demo-user',
     emailId: email.id,
     remindAt,
@@ -218,8 +188,7 @@ emailRoutes.post('/:id/reminder', (req: Request, res: Response) => {
     isActive: true,
     isDismissed: false,
     createdAt: new Date().toISOString(),
-  };
+  });
 
-  inMemoryStore.reminders.set(reminder.id, reminder);
   res.json(reminder);
 });

@@ -158,6 +158,7 @@ const seedEmails: Email[] = emailTemplates.map((template, index) => {
 
   return {
     id: `email-${index + 1}`,
+    userId: 'demo-user',
     accountId: accountIds[index],
     messageId: `msg-${index + 1}`,
     fromName: template.fromName,

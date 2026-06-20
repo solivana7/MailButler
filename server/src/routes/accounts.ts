@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { inMemoryStore } from '../db/index.js';
+import { accountRepo } from '../db/repository.js';
 import type { Account } from '../db/schema.js';
 
 export const accountRoutes = Router();
@@ -28,14 +28,14 @@ function toFrontendAccount(account: Account) {
 }
 
 // Get all accounts
-accountRoutes.get('/', (_req: Request, res: Response) => {
-  const accounts = Array.from(inMemoryStore.accounts.values()).map(toFrontendAccount);
-  res.json(accounts);
+accountRoutes.get('/', async (_req: Request, res: Response) => {
+  const accounts = await accountRepo.findAll();
+  res.json(accounts.map(toFrontendAccount));
 });
 
 // Get single account
-accountRoutes.get('/:id', (req: Request, res: Response) => {
-  const account = inMemoryStore.accounts.get(req.params.id);
+accountRoutes.get('/:id', async (req: Request, res: Response) => {
+  const account = await accountRepo.findById(req.params.id);
 
   if (!account) {
     return res.status(404).json({ error: 'Account not found' });
@@ -52,9 +52,10 @@ accountRoutes.post('/', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const account: Account = {
+  const now = new Date().toISOString();
+  const account = await accountRepo.create({
     id: `acc-${Date.now()}`,
-    userId: 'demo-user', // Would come from auth in production
+    userId: 'demo-user',
     name,
     email,
     provider,
@@ -68,99 +69,84 @@ accountRoutes.post('/', async (req: Request, res: Response) => {
     unreadCount: 0,
     totalEmails: 0,
     isEnabled: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+    createdAt: now,
+    updatedAt: now,
+  });
 
-  inMemoryStore.accounts.set(account.id, account);
   res.status(201).json(toFrontendAccount(account));
 });
 
 // Update account
-accountRoutes.patch('/:id', (req: Request, res: Response) => {
-  const account = inMemoryStore.accounts.get(req.params.id);
+accountRoutes.patch('/:id', async (req: Request, res: Response) => {
+  const account = await accountRepo.findById(req.params.id);
 
   if (!account) {
     return res.status(404).json({ error: 'Account not found' });
   }
 
   const updates = req.body;
-  const updatedAccount: Account = {
-    ...account,
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  };
+  const updatedAccount = await accountRepo.update(req.params.id, updates);
 
-  inMemoryStore.accounts.set(account.id, updatedAccount);
+  if (!updatedAccount) {
+    return res.status(404).json({ error: 'Account not found' });
+  }
+
   res.json(toFrontendAccount(updatedAccount));
 });
 
 // Toggle account enabled/disabled
-accountRoutes.patch('/:id/toggle', (req: Request, res: Response) => {
-  const account = inMemoryStore.accounts.get(req.params.id);
+accountRoutes.patch('/:id/toggle', async (req: Request, res: Response) => {
+  const account = await accountRepo.findById(req.params.id);
 
   if (!account) {
     return res.status(404).json({ error: 'Account not found' });
   }
 
-  const updatedAccount: Account = {
-    ...account,
+  const updatedAccount = await accountRepo.update(req.params.id, {
     isEnabled: !account.isEnabled,
-    updatedAt: new Date().toISOString(),
-  };
+  });
 
-  inMemoryStore.accounts.set(account.id, updatedAccount);
+  if (!updatedAccount) {
+    return res.status(404).json({ error: 'Account not found' });
+  }
+
   res.json(toFrontendAccount(updatedAccount));
 });
 
 // Sync account (trigger email fetch)
 accountRoutes.post('/:id/sync', async (req: Request, res: Response) => {
-  const account = inMemoryStore.accounts.get(req.params.id);
+  const account = await accountRepo.findById(req.params.id);
 
   if (!account) {
     return res.status(404).json({ error: 'Account not found' });
   }
 
   // Mark as syncing
-  const syncingAccount: Account = {
-    ...account,
+  await accountRepo.update(req.params.id, {
     lastSyncAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  inMemoryStore.accounts.set(account.id, syncingAccount);
+  });
 
   // In production, this would trigger actual email sync
   // For demo, we simulate sync completion
-  setTimeout(() => {
-    const completedAccount: Account = {
-      ...syncingAccount,
+  setTimeout(async () => {
+    await accountRepo.update(req.params.id, {
       unreadCount: Math.floor(Math.random() * 30),
-      totalEmails: (syncingAccount.totalEmails || 0) + Math.floor(Math.random() * 50),
-    };
-    inMemoryStore.accounts.set(account.id, completedAccount);
+      totalEmails: (account.totalEmails || 0) + Math.floor(Math.random() * 50),
+    });
   }, 2000);
 
   res.json({ status: 'syncing', message: 'Sync started' });
 });
 
 // Delete account
-accountRoutes.delete('/:id', (req: Request, res: Response) => {
-  const account = inMemoryStore.accounts.get(req.params.id);
+accountRoutes.delete('/:id', async (req: Request, res: Response) => {
+  const account = await accountRepo.findById(req.params.id);
 
   if (!account) {
     return res.status(404).json({ error: 'Account not found' });
   }
 
-  inMemoryStore.accounts.delete(req.params.id);
-
-  // Also delete associated emails
-  const emailKeys = Array.from(inMemoryStore.emails.keys());
-  emailKeys.forEach(key => {
-    const email = inMemoryStore.emails.get(key);
-    if (email?.accountId === req.params.id) {
-      inMemoryStore.emails.delete(key);
-    }
-  });
+  await accountRepo.delete(req.params.id);
 
   res.json({ success: true });
 });
