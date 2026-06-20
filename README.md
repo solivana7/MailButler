@@ -1,4 +1,4 @@
-# MailMind - AI Email Command Center
+# SoliMail - AI Email Command Center
 
 An intelligent email management system with AI-powered triage, action extraction, reminders, and weekly digests. Designed for power users with many email accounts.
 
@@ -41,8 +41,8 @@ An intelligent email management system with AI-powered triage, action extraction
 
 1. **Clone and install**
 ```bash
-git clone https://github.com/YOUR_USERNAME/mailmind.git
-cd mailmind
+git clone https://github.com/YOUR_USERNAME/mailbutler.git
+cd mailbutler
 corepack enable
 pnpm install
 cd server
@@ -84,7 +84,7 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/mailmind.git
+git remote add origin https://github.com/YOUR_USERNAME/mailbutler.git
 git push -u origin main
 ```
 
@@ -101,8 +101,8 @@ git push -u origin main
    GOOGLE_CLIENT_ID=...
    GOOGLE_CLIENT_SECRET=...
    PORT=3001
-   FRONTEND_URL=https://your-app.railway.app
-   SERVER_URL=https://your-app.railway.app
+   FRONTEND_URL=https://solimail.app
+   SERVER_URL=https://solimail.app
    ```
 
 4. **Add PostgreSQL database (optional)**
@@ -112,7 +112,7 @@ git push -u origin main
 
 5. **Deploy**
    - Railway builds and deploys automatically
-   - Your app will be live at `https://your-app.railway.app`
+   - Your app will be live at `https://solimail.app`
 
 ## API Endpoints
 
@@ -186,7 +186,7 @@ POST   /api/ai/suggest-actions  - Suggest actions
 ## Project Structure
 
 ```
-mailmind/
+solimail/
 ├── src/                   # Frontend React app
 │   ├── components/        # React components
 │   ├── store/             # Zustand state management

@@ -1,7 +1,7 @@
 {
-  "name": "mailmind-server",
+  "name": "solimail-server",
   "version": "1.0.0",
-  "description": "MailMind AI Email Command Center - Backend API",
+  "description": "SoliMail AI Email Command Center - Backend API",
   "packageManager": "pnpm@9.15.5",
   "main": "dist/index.js",
   "scripts": {

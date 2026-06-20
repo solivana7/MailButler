@@ -75,7 +75,7 @@ app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════╗
 ║                                                       ║
-║   🧠 MailMind Server Running                         ║
+║   🧠 SoliMail Server Running                         ║
 ║                                                       ║
 ║   Port: ${PORT}                                          ║
 ║   Env:  ${process.env.NODE_ENV || 'development'}                            ║
