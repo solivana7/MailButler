@@ -1,6 +1,15 @@
 import { Router, Request, Response } from 'express';
+import { accountRepo } from '../db/repository.js';
 
 export const authRoutes = Router();
+
+const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3001';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_REDIRECT_URI = `${SERVER_URL}/api/auth/gmail/callback`;
+const GMAIL_SCOPE = encodeURIComponent(
+  'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify'
+);
 
 // Demo auth - in production, this would use proper OAuth2
 const DEMO_USER = {
@@ -15,64 +24,91 @@ authRoutes.get('/me', (_req: Request, res: Response) => {
 });
 
 // Gmail OAuth2 initiation
-authRoutes.post('/gmail', async (req: Request, res: Response) => {
-  const { code } = req.body;
-
-  if (!code) {
-    // Return OAuth URL for user to authorize
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const redirectUri = `${process.env.SERVER_URL || 'http://localhost:3001'}/api/auth/gmail/callback`;
-
-    if (!clientId) {
-      return res.status(400).json({
-        error: 'Google OAuth not configured',
-        message: 'Set GOOGLE_CLIENT_ID environment variable',
-      });
-    }
-
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${clientId}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      `&response_type=code` +
-      `&scope=${encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify')}` +
-      `&access_type=offline` +
-      `&prompt=consent`;
-
-    return res.json({ authUrl });
+authRoutes.post('/gmail', async (_req: Request, res: Response) => {
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'TBD') {
+    return res.status(400).json({
+      error: 'Google OAuth not configured',
+      message: 'Set GOOGLE_CLIENT_ID environment variable',
+    });
   }
 
-  // Exchange code for tokens
+  const authUrl =
+    `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${GOOGLE_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}` +
+    `&response_type=code` +
+    `&scope=${GMAIL_SCOPE}` +
+    `&access_type=offline` +
+    `&prompt=consent`;
+
+  res.json({ authUrl });
+});
+
+// Gmail OAuth2 callback
+authRoutes.get('/gmail/callback', async (req: Request, res: Response) => {
+  const code = req.query.code as string | undefined;
+
+  if (!code) {
+    return res.redirect(`${SERVER_URL}/accounts?error=gmail_auth_failed`);
+  }
+
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || GOOGLE_CLIENT_ID === 'TBD' || GOOGLE_CLIENT_SECRET === 'TBD') {
+    return res.redirect(`${SERVER_URL}/accounts?error=oauth_not_configured`);
+  }
+
   try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code,
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: `${process.env.SERVER_URL || 'http://localhost:3001'}/api/auth/gmail/callback`,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: GOOGLE_REDIRECT_URI,
         grant_type: 'authorization_code',
       }),
     });
 
-    const tokens = await response.json();
+    const tokens = await tokenRes.json();
 
     if (tokens.error) {
       throw new Error(tokens.error_description || tokens.error);
     }
 
-    // In production, store tokens securely and fetch email address
-    res.json({
-      success: true,
-      account: {
-        id: `gmail-${Date.now()}`,
-        email: 'user@gmail.com', // Would be fetched from Gmail API
-        provider: 'gmail',
-      },
+    // Fetch Gmail profile to get email address
+    const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
+
+    const profile = (await profileRes.json()) as { email?: string; name?: string };
+    const email = profile.email || 'user@gmail.com';
+    const name = profile.name || email.split('@')[0];
+
+    const now = new Date().toISOString();
+    const account = await accountRepo.create({
+      id: `gmail-${Date.now()}`,
+      userId: 'demo-user',
+      name,
+      email,
+      provider: 'gmail',
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token || null,
+      imapServer: null,
+      imapPort: null,
+      imapUser: null,
+      imapPassword: null,
+      lastSyncAt: null,
+      unreadCount: 0,
+      totalEmails: 0,
+      isEnabled: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    res.redirect(`${SERVER_URL}/accounts?success=gmail_connected&account=${account.id}`);
   } catch (error) {
-    console.error('Gmail OAuth error:', error);
-    res.status(500).json({ error: 'Failed to authenticate with Gmail' });
+    console.error('Gmail OAuth callback error:', error);
+    res.redirect(`${SERVER_URL}/accounts?error=gmail_auth_failed`);
   }
 });
 
@@ -91,7 +127,7 @@ authRoutes.post('/imap', async (req: Request, res: Response) => {
   // For demo, just accept the configuration
   try {
     // Simulate connection test
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     res.json({
       success: true,
@@ -120,14 +156,18 @@ authRoutes.post('/refresh', async (req: Request, res: Response) => {
   const { refreshToken, provider } = req.body;
 
   if (provider === 'gmail' && refreshToken) {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      return res.status(500).json({ error: 'Google OAuth not configured' });
+    }
+
     try {
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           refresh_token: refreshToken,
-          client_id: process.env.GOOGLE_CLIENT_ID,
-          client_secret: process.env.GOOGLE_CLIENT_SECRET,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
           grant_type: 'refresh_token',
         }),
       });
