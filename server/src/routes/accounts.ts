@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { accountRepo } from '../db/repository.js';
 import { syncGmailAccount } from '../services/gmail.js';
+import { syncImapAccount } from '../services/imap.js';
 import type { Account } from '../db/schema.js';
 
 export const accountRoutes = Router();
@@ -135,15 +136,15 @@ accountRoutes.post('/:id/sync', async (req: Request, res: Response) => {
     return res.json({ status: 'synced', message: result.message, syncedCount: result.syncedCount });
   }
 
-  // For demo / IMAP accounts, simulate sync completion
-  setTimeout(async () => {
-    await accountRepo.update(req.params.id, {
-      unreadCount: Math.floor(Math.random() * 30),
-      totalEmails: (account.totalEmails || 0) + Math.floor(Math.random() * 50),
-    });
-  }, 2000);
+  if (account.provider === 'imap') {
+    const result = await syncImapAccount(account.id);
+    if (!result.success) {
+      return res.status(500).json({ status: 'error', message: result.message });
+    }
+    return res.json({ status: 'synced', message: result.message, syncedCount: result.syncedCount });
+  }
 
-  res.json({ status: 'syncing', message: 'Sync started' });
+  res.status(400).json({ status: 'error', message: 'Unknown provider' });
 });
 
 // Delete account

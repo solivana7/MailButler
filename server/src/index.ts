@@ -10,6 +10,9 @@ import { digestRoutes } from './routes/digest';
 import { aiRoutes } from './routes/ai';
 import { authRoutes } from './routes/auth';
 import { seedInMemoryStore } from './seed';
+import { accountRepo } from './db/repository';
+import { syncGmailAccount } from './services/gmail';
+import { syncImapAccount } from './services/imap';
 
 config();
 
@@ -93,5 +96,35 @@ app.listen(PORT, () => {
 ╚═══════════════════════════════════════════════════════╝
   `);
 });
+
+// Background sync every 15 minutes
+if (process.env.DATABASE_URL) {
+  const SYNC_INTERVAL_MS = 15 * 60 * 1000;
+
+  const runBackgroundSync = async () => {
+    try {
+      const accounts = await accountRepo.findAll();
+      for (const account of accounts) {
+        if (!account.isEnabled) continue;
+
+        if (account.provider === 'gmail' && (account.accessToken || account.refreshToken)) {
+          await syncGmailAccount(account.id).catch((err) =>
+            console.error(`Background Gmail sync failed for ${account.id}:`, err)
+          );
+        } else if (account.provider === 'imap') {
+          await syncImapAccount(account.id).catch((err) =>
+            console.error(`Background IMAP sync failed for ${account.id}:`, err)
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Background sync loop error:', err);
+    }
+  };
+
+  // Run once shortly after startup, then on interval
+  setTimeout(runBackgroundSync, 30000);
+  setInterval(runBackgroundSync, SYNC_INTERVAL_MS);
+}
 
 export default app;

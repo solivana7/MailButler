@@ -2,6 +2,7 @@ import { accountRepo, emailRepo } from '../db/repository.js';
 import { generateId } from '../db/index.js';
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 interface GmailHeader {
   name: string;
@@ -32,6 +33,31 @@ interface GmailMessage {
     mimeType?: string;
   };
   internalDate?: string;
+}
+
+async function refreshAccessToken(refreshToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(GOOGLE_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    const data = await res.json();
+    if (data.error || !data.access_token) {
+      console.error('Gmail token refresh failed:', data);
+      return null;
+    }
+    return data.access_token;
+  } catch (error) {
+    console.error('Gmail token refresh error:', error);
+    return null;
+  }
 }
 
 function base64UrlDecode(input: string): string {
@@ -153,14 +179,34 @@ export async function syncGmailAccount(accountId: string): Promise<{
     return { success: false, message: 'Account is not a Gmail account' };
   }
 
-  if (!account.accessToken) {
+  let accessToken = account.accessToken;
+
+  if (!accessToken && account.refreshToken) {
+    accessToken = await refreshAccessToken(account.refreshToken);
+    if (accessToken) {
+      await accountRepo.update(account.id, { accessToken });
+    }
+  }
+
+  if (!accessToken) {
     return { success: false, message: 'No access token available' };
   }
 
-  const listData = await gmailApiRequest<{ messages?: Array<{ id: string; threadId: string }> }>(
-    account.accessToken,
-    '/messages?maxResults=50&labelIds=INBOX'
+  let listData = await gmailApiRequest<{ messages?: Array<{ id: string; threadId: string }> }>(
+    accessToken,
+    '/messages?maxResults=100&labelIds=INBOX'
   );
+
+  if ((!listData || !listData.messages) && account.refreshToken) {
+    accessToken = await refreshAccessToken(account.refreshToken);
+    if (accessToken) {
+      await accountRepo.update(account.id, { accessToken });
+      listData = await gmailApiRequest<{ messages?: Array<{ id: string; threadId: string }> }>(
+        accessToken,
+        '/messages?maxResults=100&labelIds=INBOX'
+      );
+    }
+  }
 
   if (!listData || !listData.messages) {
     return { success: false, message: 'Failed to fetch Gmail message list' };
@@ -179,7 +225,7 @@ export async function syncGmailAccount(accountId: string): Promise<{
     if (existingMessages.has(msgRef.id)) continue;
 
     const message = await gmailApiRequest<GmailMessage>(
-      account.accessToken,
+      accessToken,
       `/messages/${msgRef.id}?format=full`
     );
 
