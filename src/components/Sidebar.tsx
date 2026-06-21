@@ -134,9 +134,11 @@ export const Sidebar: React.FC = () => {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 via-blue-500 to-emerald-500 flex items-center justify-center">
-                <Sparkles size={16} className="text-white" />
-              </div>
+              <img
+                src="/logo.png"
+                alt="SoliMail"
+                className="w-8 h-8 rounded-lg object-cover"
+              />
               <span className="text-lg font-semibold text-white">SoliMail</span>
             </motion.div>
             <button
