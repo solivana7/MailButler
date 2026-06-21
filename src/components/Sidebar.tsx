@@ -135,11 +135,10 @@ export const Sidebar: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
             >
               <img
-                src="/logo.png"
+                src="/logo-horizontal-sm.png"
                 alt="SoliMail"
-                className="w-8 h-8 rounded-lg object-cover"
+                className="h-8 w-auto object-contain"
               />
-              <span className="text-lg font-semibold text-white">SoliMail</span>
             </motion.div>
             <button
               onClick={toggleSidebar}

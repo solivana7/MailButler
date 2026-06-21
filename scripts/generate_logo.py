@@ -79,12 +79,25 @@ def create_icon(size, transparent_corners=True):
     draw = ImageDraw.Draw(img)
     # Envelope
     env_w = int(size * 0.55)
-    env_h = int(size * 0.40)
-    draw_envelope(draw, size//2, size//2, env_w, env_h, '#FFFFFF')
+    env_h = int(size * 0.34)
+    draw_envelope(draw, size//2, int(size*0.42), env_w, env_h, '#FFFFFF')
     # Sparkle
     spark_x = int(size * 0.75)
     spark_y = int(size * 0.28)
     draw_sparkle(draw, spark_x, spark_y, size//18, '#A78BFA')
+    # Brand text
+    try:
+        font = ImageFont.truetype(FONT_PATH, int(size * 0.13))
+    except Exception:
+        font = ImageFont.load_default()
+    text = 'SoliMail'
+    bbox = draw.textbbox((0, 0), text, font=font)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+    text_x = (size - text_w) // 2
+    text_y = int(size * 0.74)
+    draw.text((text_x + size//120, text_y + size//120), text, font=font, fill='#4C1D95')
+    draw.text((text_x, text_y), text, font=font, fill='#FFFFFF')
     return img
 
 def create_horizontal(width=2000, height=600):
