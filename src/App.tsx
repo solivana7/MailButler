@@ -1,6 +1,6 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Sidebar, Dashboard, EmailList, TaskPanel, DigestView, AccountManager, Privacy } from '@/components';
+import { Sidebar, Dashboard, EmailList, TaskPanel, DigestView, AccountManager, Privacy, Terms } from '@/components';
 import { useStore } from '@/store';
 import './App.css';
 
@@ -47,6 +47,10 @@ const MainContent: React.FC = () => {
 function App() {
   if (window.location.pathname === '/privacy') {
     return <Privacy />;
+  }
+
+  if (window.location.pathname === '/terms') {
+    return <Terms />;
   }
 
   return (
