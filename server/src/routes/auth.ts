@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { accountRepo } from '../db/repository.js';
+import { syncGmailAccount } from '../services/gmail.js';
 
 export const authRoutes = Router();
 
@@ -8,7 +9,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = `${SERVER_URL}/api/auth/gmail/callback`;
 const GMAIL_SCOPE = encodeURIComponent(
-  'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify'
+  'openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.modify'
 );
 
 // Demo auth - in production, this would use proper OAuth2
@@ -103,6 +104,11 @@ authRoutes.get('/gmail/callback', async (req: Request, res: Response) => {
       isEnabled: true,
       createdAt: now,
       updatedAt: now,
+    });
+
+    // Start initial sync in the background
+    syncGmailAccount(account.id).catch((err) => {
+      console.error('Initial Gmail sync failed:', err);
     });
 
     res.redirect(`${SERVER_URL}/accounts?success=gmail_connected&account=${account.id}`);
