@@ -6,3 +6,4 @@ export { TaskPanel } from './TaskPanel';
 export { DigestView } from './DigestView';
 export { AccountManager } from './AccountManager';
 export { Dashboard } from './Dashboard';
+export { Privacy } from './Privacy';
