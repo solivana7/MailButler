@@ -325,7 +325,11 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteAccount: async (id) => {
-    await fetch(`${API_BASE}/accounts/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/accounts/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to delete account');
+    }
     set((state) => ({
       accounts: state.accounts.filter((account) => account.id !== id),
     }));

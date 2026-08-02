@@ -67,6 +67,19 @@ export const accountRepo = {
       inMemoryStore.accounts.delete(id);
       return;
     }
+
+    // Cascade delete: reminders -> tasks -> emails -> account
+    const accountEmails = await db
+      .select({ id: schema.emails.id })
+      .from(schema.emails)
+      .where(eq(schema.emails.accountId, id));
+    const emailIds = accountEmails.map((e) => e.id);
+
+    if (emailIds.length > 0) {
+      await db.delete(schema.reminders).where(sql`${schema.reminders.emailId} IN ${emailIds}`);
+      await db.delete(schema.tasks).where(sql`${schema.tasks.emailId} IN ${emailIds}`);
+    }
+    await db.delete(schema.emails).where(eq(schema.emails.accountId, id));
     await db.delete(schema.accounts).where(eq(schema.accounts.id, id));
   },
 };

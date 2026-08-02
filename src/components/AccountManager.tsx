@@ -314,7 +314,13 @@ export const AccountManager: React.FC = () => {
                 account={account}
                 onToggle={() => toggleAccount(account.id)}
                 onSync={() => syncAccount(account.id)}
-                onDelete={() => deleteAccount(account.id)}
+                onDelete={async () => {
+                  try {
+                    await deleteAccount(account.id);
+                  } catch (error) {
+                    alert(error instanceof Error ? error.message : 'Failed to delete account');
+                  }
+                }}
               />
             ))}
           </AnimatePresence>
