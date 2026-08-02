@@ -35,8 +35,9 @@ interface TaskItemProps {
 
 const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
   const [showMenu, setShowMenu] = useState(false);
-  const StatusIcon = statusConfig[task.status].icon;
-  const isOverdue = task.dueDate && isPast(new Date(task.dueDate)) && task.status !== 'completed';
+  const status = statusConfig[task.status] ? task.status : 'pending';
+  const StatusIcon = statusConfig[status].icon;
+  const isOverdue = task.dueDate && isPast(new Date(task.dueDate)) && status !== 'completed';
 
   const getDueDateLabel = () => {
     if (!task.dueDate) return null;
@@ -52,7 +53,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
     <motion.div
       layout
       className={`group relative p-4 rounded-xl transition-all ${
-        task.status === 'completed'
+        status === 'completed'
           ? 'bg-gray-800/30 border border-gray-800'
           : 'bg-[#1E1E27] border border-gray-800 hover:border-gray-700'
       }`}
@@ -63,27 +64,27 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
       {/* Status Icon */}
       <motion.button
         onClick={onToggle}
-        className={`absolute left-4 top-4 ${statusConfig[task.status].color} hover:scale-110 transition-transform`}
+        className={`absolute left-4 top-4 ${statusConfig[status].color} hover:scale-110 transition-transform`}
         whileTap={{ scale: 0.9 }}
       >
         <StatusIcon
           size={20}
-          fill={task.status === 'completed' ? 'currentColor' : 'none'}
-          strokeWidth={task.status === 'completed' ? 0 : 2}
+          fill={status === 'completed' ? 'currentColor' : 'none'}
+          strokeWidth={status === 'completed' ? 0 : 2}
         />
       </motion.button>
 
       {/* Content */}
       <div className="pl-10 pr-16">
         <p className={`text-sm font-medium ${
-          task.status === 'completed' ? 'text-gray-500 line-through' : 'text-white'
+          status === 'completed' ? 'text-gray-500 line-through' : 'text-white'
         }`}>
           {task.description}
         </p>
 
         {/* Meta Info */}
         <div className="flex items-center gap-2 mt-2">
-          <span className={`px-2 py-0.5 rounded text-xs font-medium ${priorityColors[task.priority]}`}>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium ${priorityColors[task.priority] || priorityColors.medium}`}>
             {task.priority}
           </span>
           {dueDateLabel && (

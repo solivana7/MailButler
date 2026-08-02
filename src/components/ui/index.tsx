@@ -18,7 +18,8 @@ const categoryConfig: Record<Category, { color: string; bg: string; icon: string
 };
 
 export const CategoryBadge: React.FC<CategoryBadgeProps> = ({ category, size = 'sm', showIcon = true }) => {
-  const config = categoryConfig[category];
+  const safeCategory = category && categoryConfig[category] ? category : 'archive';
+  const config = categoryConfig[safeCategory];
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm';
 
   return (
