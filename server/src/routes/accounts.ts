@@ -54,19 +54,43 @@ accountRoutes.post('/', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const now = new Date().toISOString();
-  const account = await accountRepo.create({
-    id: `acc-${Date.now()}`,
-    userId: 'demo-user',
+  const account = await createAccount({
     name,
     email,
     provider,
+    imapServer,
+    imapPort,
+    imapUser,
+    imapPassword,
+  });
+
+  res.status(201).json(toFrontendAccount(account));
+});
+
+interface CreateAccountInput {
+  name: string;
+  email: string;
+  provider: 'gmail' | 'imap';
+  imapServer?: string;
+  imapPort?: number;
+  imapUser?: string;
+  imapPassword?: string;
+}
+
+async function createAccount(input: CreateAccountInput): Promise<Account> {
+  const now = new Date().toISOString();
+  return accountRepo.create({
+    id: `${input.provider}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    userId: 'demo-user',
+    name: input.name,
+    email: input.email,
+    provider: input.provider,
     accessToken: null,
     refreshToken: null,
-    imapServer: imapServer || null,
-    imapPort: imapPort || null,
-    imapUser: imapUser || null,
-    imapPassword: imapPassword || null,
+    imapServer: input.imapServer || null,
+    imapPort: input.imapPort || null,
+    imapUser: input.imapUser || null,
+    imapPassword: input.imapPassword || null,
     lastSyncAt: null,
     unreadCount: 0,
     totalEmails: 0,
@@ -74,8 +98,123 @@ accountRoutes.post('/', async (req: Request, res: Response) => {
     createdAt: now,
     updatedAt: now,
   });
+}
 
-  res.status(201).json(toFrontendAccount(account));
+// Parse a simple CSV string into rows
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let current: string[] = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (inQuotes) {
+      if (char === '"' && next === '"') {
+        field += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        field += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        current.push(field.trim());
+        field = '';
+      } else if (char === '\n' || char === '\r') {
+        if (char === '\r' && next === '\n') i++;
+        if (current.length > 0 || field) {
+          current.push(field.trim());
+          rows.push(current);
+          current = [];
+          field = '';
+        }
+      } else {
+        field += char;
+      }
+    }
+  }
+
+  if (current.length > 0 || field) {
+    current.push(field.trim());
+    rows.push(current);
+  }
+
+  return rows;
+}
+
+// Bulk import accounts from CSV
+accountRoutes.post('/import', async (req: Request, res: Response) => {
+  const { csv } = req.body;
+
+  if (!csv || typeof csv !== 'string') {
+    return res.status(400).json({ error: 'Missing csv field' });
+  }
+
+  const rows = parseCsv(csv);
+  if (rows.length < 2) {
+    return res.status(400).json({ error: 'CSV must have a header row and at least one data row' });
+  }
+
+  const headers = rows[0].map((h) => h.toLowerCase().trim());
+  const nameIdx = headers.indexOf('name');
+  const emailIdx = headers.indexOf('email');
+  const providerIdx = headers.indexOf('provider');
+  const serverIdx = headers.indexOf('server');
+  const portIdx = headers.indexOf('port');
+  const usernameIdx = headers.indexOf('username');
+  const passwordIdx = headers.indexOf('password');
+
+  if (nameIdx === -1 || emailIdx === -1 || providerIdx === -1) {
+    return res.status(400).json({ error: 'CSV must include name, email, and provider columns' });
+  }
+
+  const results: { created: number; skipped: number; errors: string[] } = {
+    created: 0,
+    skipped: 0,
+    errors: [],
+  };
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.length < 3 || !row.some((cell) => cell)) continue;
+
+    const name = row[nameIdx]?.trim();
+    const email = row[emailIdx]?.trim();
+    const provider = row[providerIdx]?.trim().toLowerCase();
+
+    if (!name || !email) {
+      results.errors.push(`Row ${i + 1}: missing name or email`);
+      continue;
+    }
+
+    if (provider !== 'gmail' && provider !== 'imap') {
+      results.errors.push(`Row ${i + 1}: provider must be 'gmail' or 'imap'`);
+      continue;
+    }
+
+    try {
+      await createAccount({
+        name,
+        email,
+        provider,
+        imapServer: row[serverIdx]?.trim(),
+        imapPort: row[portIdx] ? parseInt(row[portIdx].trim(), 10) : undefined,
+        imapUser: row[usernameIdx]?.trim(),
+        imapPassword: row[passwordIdx]?.trim(),
+      });
+      results.created++;
+    } catch (error) {
+      results.errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  res.json(results);
 });
 
 // Update account

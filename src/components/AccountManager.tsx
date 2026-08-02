@@ -155,10 +155,14 @@ const AccountCard: React.FC<AccountCardProps> = ({
 };
 
 export const AccountManager: React.FC = () => {
-  const { accounts, toggleAccount, syncAccount, addAccount, deleteAccount } = useStore();
+  const { accounts, toggleAccount, syncAccount, addAccount, deleteAccount, fetchAccounts } = useStore();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [provider, setProvider] = useState<'gmail' | 'imap' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importCsv, setImportCsv] = useState('');
+  const [importResult, setImportResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -221,6 +225,35 @@ export const AccountManager: React.FC = () => {
     }
   };
 
+  const handleCsvImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!importCsv.trim()) return;
+
+    setIsImporting(true);
+    setImportResult(null);
+
+    try {
+      const res = await fetch('/api/accounts/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv: importCsv }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || 'Import failed');
+      } else {
+        setImportResult(data);
+        await fetchAccounts();
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Failed to import accounts. Check the console for details.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#0D0D12]">
       <div className="flex-shrink-0 p-6 border-b border-gray-800 bg-[#16161D]">
@@ -236,14 +269,24 @@ export const AccountManager: React.FC = () => {
               </p>
             </div>
           </div>
-          <motion.button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white rounded-lg text-sm font-medium transition-colors"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Plus size={16} /> Add Account
-          </motion.button>
+          <div className="flex items-center gap-2">
+            <motion.button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Import CSV
+            </motion.button>
+            <motion.button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white rounded-lg text-sm font-medium transition-colors"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Plus size={16} /> Add Account
+            </motion.button>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mt-6">
@@ -483,6 +526,80 @@ export const AccountManager: React.FC = () => {
                   </motion.button>
                 </form>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* CSV Import Modal */}
+      <AnimatePresence>
+        {showImportModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowImportModal(false)}
+          >
+            <motion.div
+              className="bg-[#1E1E27] rounded-2xl border border-gray-800 w-full max-w-2xl p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">Import Accounts from CSV</h2>
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-400 mb-2">
+                Paste CSV with columns: <code className="text-violet-400">name,email,provider,server,port,username,password</code>
+              </p>
+              <p className="text-xs text-gray-500 mb-4">
+                Use <code className="text-gray-400">gmail</code> for Gmail accounts (OAuth required after import) and <code className="text-gray-400">imap</code> for everything else.
+              </p>
+
+              <form onSubmit={handleCsvImport} className="space-y-4">
+                <textarea
+                  value={importCsv}
+                  onChange={(e) => setImportCsv(e.target.value)}
+                  placeholder="name,email,provider,server,port,username,password&#10;Personal Gmail,natasha@gmail.com,gmail,,,,&#10;Work,natasha@company.com,imap,mail.company.com,993,natasha@company.com,PASSWORD"
+                  rows={10}
+                  className="w-full px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 font-mono"
+                />
+
+                {importResult && (
+                  <div className="p-3 bg-gray-800/50 rounded-lg text-sm">
+                    <p className="text-emerald-400">Created: {importResult.created}</p>
+                    {importResult.errors.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-red-400">Errors:</p>
+                        <ul className="text-xs text-gray-400 list-disc list-inside max-h-32 overflow-y-auto">
+                          {importResult.errors.map((err, i) => (
+                            <li key={i}>{err}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <motion.button
+                  type="submit"
+                  disabled={isImporting || !importCsv.trim()}
+                  className="w-full py-3 bg-violet-500 hover:bg-violet-600 disabled:bg-violet-500/50 text-white rounded-lg font-medium transition-colors"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                >
+                  {isImporting ? 'Importing...' : 'Import Accounts'}
+                </motion.button>
+              </form>
             </motion.div>
           </motion.div>
         )}
