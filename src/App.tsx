@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Sidebar, Dashboard, EmailList, TaskPanel, DigestView, AccountManager, Privacy, Terms } from '@/components';
 import { useStore } from '@/store';
@@ -14,7 +14,18 @@ const queryClient = new QueryClient({
 });
 
 const MainContent: React.FC = () => {
-  const { activeSection } = useStore();
+  const { activeSection, initialize, setActiveSection } = useStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    // After Gmail OAuth redirect, land on Accounts section
+    if (window.location.pathname === '/accounts') {
+      setActiveSection('accounts');
+    }
+  }, [setActiveSection]);
 
   const renderContent = () => {
     switch (activeSection) {
