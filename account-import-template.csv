@@ -1,0 +1,6 @@
+name,email,provider,server,port,username,password
+Personal Gmail,natasha@gmail.com,gmail,,,,
+Work Email,natasha@company.com,imap,mail.company.com,993,natasha@company.com,APP_SPECIFIC_PASSWORD
+iCloud Mail,natasha@icloud.com,imap,imap.mail.me.com,993,natasha@icloud.com,APP_SPECIFIC_PASSWORD
+Outlook,natasha@outlook.com,imap,outlook.office365.com,993,natasha@outlook.com,PASSWORD
+Yahoo Mail,natasha@yahoo.com,imap,imap.mail.yahoo.com,993,natasha@yahoo.com,APP_SPECIFIC_PASSWORD
