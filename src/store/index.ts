@@ -53,6 +53,7 @@ interface AppState {
   fetchAccounts: () => Promise<void>;
   toggleAccount: (id: string) => Promise<void>;
   syncAccount: (id: string) => Promise<void>;
+  deleteAccount: (id: string) => Promise<void>;
 
   // Digest Actions
   fetchDigest: () => Promise<void>;
@@ -321,6 +322,13 @@ export const useStore = create<AppState>((set, get) => ({
         ),
       }));
     }, 2000);
+  },
+
+  deleteAccount: async (id) => {
+    await fetch(`${API_BASE}/accounts/${id}`, { method: 'DELETE' });
+    set((state) => ({
+      accounts: state.accounts.filter((account) => account.id !== id),
+    }));
   },
 
   // Digest Actions

@@ -155,7 +155,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
 };
 
 export const AccountManager: React.FC = () => {
-  const { accounts, toggleAccount, syncAccount, addAccount } = useStore();
+  const { accounts, toggleAccount, syncAccount, addAccount, deleteAccount } = useStore();
   const [showAddModal, setShowAddModal] = useState(false);
   const [provider, setProvider] = useState<'gmail' | 'imap' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -271,7 +271,7 @@ export const AccountManager: React.FC = () => {
                 account={account}
                 onToggle={() => toggleAccount(account.id)}
                 onSync={() => syncAccount(account.id)}
-                onDelete={() => {}}
+                onDelete={() => deleteAccount(account.id)}
               />
             ))}
           </AnimatePresence>
